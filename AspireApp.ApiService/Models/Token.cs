@@ -2,6 +2,7 @@
 #nullable disable
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace AspireApp.ApiService.Models;
 
@@ -19,5 +20,6 @@ public partial class Token
 
     public bool Winner { get; set; }
 
+    [JsonIgnore]
     public virtual Market Market { get; set; }
 }
