@@ -19,8 +19,11 @@ public partial class PolyfayzedContext : DbContext
 
     public virtual DbSet<Token> Tokens { get; set; }
 
+    public virtual DbSet<CursorState> CursorStates { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<CursorState>().HasKey(c => c.Id);
+        
         modelBuilder.Entity<Market>(entity =>
         {
             entity.ToTable("Market");

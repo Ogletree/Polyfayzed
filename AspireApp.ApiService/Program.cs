@@ -5,29 +5,23 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
-
-// Add services to the container.
 builder.Services.AddProblemDetails();
-
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-// Add HangFire services
 builder.Services.AddHangfire(config =>
 {
     config.UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 builder.Services.AddHangfireServer();
 
-// Add EntityFramework services
 builder.Services.AddDbContext<PolyfayzedContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Register the DataFetchService
-builder.Services.AddTransient<DataFetchService>();
+builder.Services.AddScoped<MarketUpdateService>();
 builder.Services.AddScoped<WeatherForecastService>();
+builder.Services.AddScoped<MarketService>();
 
 var app = builder.Build();
 
@@ -52,13 +46,19 @@ app.MapGet("/weatherforecast", async (WeatherForecastService service) =>
         return forecast;
     })
     .WithName("GetWeatherForecast");
+app.MapGet("/markets", async (MarketService service) =>
+    {
+        var markets = await service.GetMarketsAsync();
+        return markets;
+    })
+    .WithName("GetMarkets");
 
 app.MapDefaultEndpoints();
 
 using (var scope = app.Services.CreateScope())
 {
-    var dataFetchService = scope.ServiceProvider.GetRequiredService<DataFetchService>();
-    RecurringJob.AddOrUpdate("DataFetchJob", () => dataFetchService.FetchAndStoreDataAsync(), Cron.Daily, new RecurringJobOptions());
+    var dataFetchService = scope.ServiceProvider.GetRequiredService<MarketUpdateService>();
+    RecurringJob.AddOrUpdate("MarketUpdate", () => dataFetchService.IntegrateAsync(), Cron.Daily, new RecurringJobOptions());
 }
 
 app.Run();

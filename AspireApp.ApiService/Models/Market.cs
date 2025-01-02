@@ -19,9 +19,9 @@ public partial class Market
 
     public bool AcceptingOrders { get; set; }
 
-    public DateTime AcceptingOrderTimestamp { get; set; }
+    public DateTime? AcceptingOrderTimestamp { get; set; }
 
-    public int MinimumOrderSize { get; set; }
+    public decimal MinimumOrderSize { get; set; }
 
     public decimal MinimumTickSize { get; set; }
 
@@ -35,9 +35,9 @@ public partial class Market
 
     public string MarketSlug { get; set; }
 
-    public DateTime EndDateIso { get; set; }
+    public DateTime? EndDateIso { get; set; }
 
-    public DateTime GameStartTime { get; set; }
+    public DateTime? GameStartTime { get; set; }
 
     public int SecondsDelay { get; set; }
 

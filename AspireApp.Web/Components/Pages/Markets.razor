@@ -2,13 +2,13 @@
 @attribute [StreamRendering(true)]
 @attribute [OutputCache(Duration = 5)]
 
-@inject WeatherApiClient WeatherApi
+@inject MarketApiClient MarketApi
 
 <PageTitle>Markets</PageTitle>
 
 <h1>Markets</h1>
 
-@if (_forecasts == null)
+@if (_markets == null)
 {
     <p><em>Loading...</em></p>
 }
@@ -17,20 +17,23 @@ else
     <table class="table">
         <thead>
             <tr>
-                <th>Date</th>
-                <th aria-label="Temperature in Celsius">Temp. (C)</th>
-                <th aria-label="Temperature in Farenheit">Temp. (F)</th>
-                <th>Summary</th>
+                <th>Question</th>
+                <th>Outcome</th>
+                <th>Price</th>
+                <th>Outcome</th>
+                <th>Price</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var forecast in _forecasts)
+            @foreach (var market in _markets)
             {
                 <tr>
-                    <td>@forecast.Date.ToShortDateString()</td>
-                    <td>@forecast.TemperatureC</td>
-                    <td>@forecast.TemperatureF</td>
-                    <td>@forecast.Summary</td>
+                    <td>@market.Question</td>
+                    @foreach (var token in market.Tokens)
+                    {
+                        <td>@token.Outcome</td>
+                        <td>@token.Price</td>
+                    }
                 </tr>
             }
         </tbody>
@@ -38,10 +41,10 @@ else
 }
 
 @code {
-    private WeatherForecast[]? _forecasts;
+    private Market[]? _markets;
 
     protected override async Task OnInitializedAsync()
     {
-        _forecasts = await WeatherApi.GetWeatherAsync();
+        _markets = await MarketApi.GetMarketsAsync();
     }
 }

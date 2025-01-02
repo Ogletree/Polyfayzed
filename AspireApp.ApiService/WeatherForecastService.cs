@@ -2,10 +2,6 @@ namespace AspireApp.ApiService;
 
 public class WeatherForecastService
 {
-    public WeatherForecastService()
-    {
-    }
-
     public async Task<IEnumerable<WeatherForecast>> GetWeatherForecastsAsync()
     {
         await Task.Delay(1000);
