@@ -1,0 +1,37 @@
+﻿@page "/websocket"
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Navigation
+
+<h3>WebSocket Messages</h3>
+
+<ul>
+    @foreach (var message in messages)
+    {
+            <li>@message</li>
+    }
+</ul>
+
+@code {
+    private HubConnection hubConnection;
+    private List<string> messages = new List<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl("https://localhost:7593/websockethub")
+            .Build();
+
+        hubConnection.On<string>("ReceiveMessage", (message) =>
+        {
+            messages.Add(message);
+            InvokeAsync(StateHasChanged);
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await hubConnection.DisposeAsync();
+    }
+}

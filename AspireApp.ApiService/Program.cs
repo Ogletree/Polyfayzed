@@ -4,6 +4,19 @@ using Hangfire;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(builder =>
+    {
+        builder.AllowAnyOrigin()
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+}); 
+builder.Services.AddRazorComponents();
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<WebSocketService>();
+
 
 builder.AddServiceDefaults();
 builder.Services.AddProblemDetails();
@@ -24,7 +37,7 @@ builder.Services.AddScoped<WeatherForecastService>();
 builder.Services.AddScoped<MarketService>();
 
 var app = builder.Build();
-
+app.UseCors();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<PolyfayzedContext>();
@@ -40,25 +53,32 @@ if (app.Environment.IsDevelopment())
 
 app.UseHangfireDashboard();
 
+// Map SignalR hub
+app.MapHub<WebSocketHub>("/websockethub");
+
 app.MapGet("/weatherforecast", async (WeatherForecastService service) =>
-    {
-        var forecast = await service.GetWeatherForecastsAsync();
-        return forecast;
-    })
+{
+    var forecast = await service.GetWeatherForecastsAsync();
+    return forecast;
+})
     .WithName("GetWeatherForecast");
 app.MapGet("/markets", async (MarketService service) =>
-    {
-        var markets = await service.GetMarketsAsync();
-        return markets;
-    })
+{
+    var markets = await service.GetMarketsAsync();
+    return markets;
+})
     .WithName("GetMarkets");
 
 app.MapDefaultEndpoints();
 
 using (var scope = app.Services.CreateScope())
 {
-    var dataFetchService = scope.ServiceProvider.GetRequiredService<MarketUpdateService>();
-    RecurringJob.AddOrUpdate("MarketUpdate", () => dataFetchService.IntegrateAsync(), Cron.Daily, new RecurringJobOptions());
+    var webSocketService = scope.ServiceProvider.GetRequiredService<WebSocketService>();
+    var cancellationTokenSource = new CancellationTokenSource();
+    _ = webSocketService.StartListening(cancellationTokenSource.Token);
+
+    //var dataFetchService = scope.ServiceProvider.GetRequiredService<MarketUpdateService>();
+    //RecurringJob.AddOrUpdate("MarketUpdate", () => dataFetchService.IntegrateAsync(), Cron.Daily, new RecurringJobOptions());
 }
 
 app.Run();
