@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AspireApp.ApiService.Models;
 using AspireApp.ApiService;
+using AspireApp.ApiService.Models.Dto;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 

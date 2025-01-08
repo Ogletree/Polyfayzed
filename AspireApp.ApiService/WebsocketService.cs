@@ -1,5 +1,6 @@
 ﻿using System.Net.WebSockets;
 using System.Text;
+using AspireApp.ApiService;
 using Hangfire;
 using Microsoft.AspNetCore.SignalR;
 

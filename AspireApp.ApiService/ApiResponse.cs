@@ -1,3 +1,5 @@
+using AspireApp.ApiService.Models.Dto;
+
 namespace AspireApp.ApiService;
 
 internal class ApiResponse

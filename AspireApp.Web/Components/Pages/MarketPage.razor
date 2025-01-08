@@ -1,0 +1,50 @@
+﻿@page "/market"
+@using AspireApp.ApiService.Models
+@attribute [StreamRendering]
+@attribute [OutputCache(Duration = 5)]
+
+@inject MarketApiClient MarketApi
+
+<PageTitle>Market</PageTitle>
+
+<h1>Market</h1>
+
+@if (_market == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Icon</th>
+            <th>Question</th>
+            <th>Outcome</th>
+            <th>Price</th>
+            <th>Outcome</th>
+            <th>Price</th>
+        </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><img src="@_market.Icon" alt="Market Icon" style="width: 50px; height: 50px;" /></td>
+                <td>@_market.Question</td>
+                @foreach (var token in _market.Tokens)
+                {
+                    <td>@token.Outcome</td>
+                    <td>@token.Price</td>
+                }
+            </tr>
+        </tbody>
+    </table>
+}
+
+@code {
+    private Market? _market;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _market = await MarketApi.GetMarketAsync("0xd1c95dbb34675b5893cfbe9df9323eb66b18928604ddd1e0c26aa2cb660f26b1");
+    }
+}

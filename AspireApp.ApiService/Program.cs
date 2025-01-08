@@ -33,7 +33,6 @@ builder.Services.AddDbContext<PolyfayzedContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<MarketUpdateService>();
-builder.Services.AddScoped<WeatherForecastService>();
 builder.Services.AddScoped<MarketService>();
 
 var app = builder.Build();
@@ -55,20 +54,7 @@ app.UseHangfireDashboard();
 
 // Map SignalR hub
 app.MapHub<WebSocketHub>("/websockethub");
-
-app.MapGet("/weatherforecast", async (WeatherForecastService service) =>
-{
-    var forecast = await service.GetWeatherForecastsAsync();
-    return forecast;
-})
-    .WithName("GetWeatherForecast");
-app.MapGet("/markets", async (MarketService service) =>
-{
-    var markets = await service.GetMarketsAsync();
-    return markets;
-})
-    .WithName("GetMarkets");
-
+app.MapEndpoints();
 app.MapDefaultEndpoints();
 
 using (var scope = app.Services.CreateScope())

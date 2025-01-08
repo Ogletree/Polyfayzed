@@ -1,6 +1,6 @@
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable InconsistentNaming
-namespace AspireApp.ApiService;
+namespace AspireApp.ApiService.Models.Dto;
 
 public class MarketDto
 {

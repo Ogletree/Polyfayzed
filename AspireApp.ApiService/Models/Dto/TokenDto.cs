@@ -1,6 +1,6 @@
 // ReSharper disable InconsistentNaming
 // ReSharper disable ClassNeverInstantiated.Global
-namespace AspireApp.ApiService;
+namespace AspireApp.ApiService.Models.Dto;
 
 public class TokenDto
 {
