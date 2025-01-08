@@ -14,12 +14,20 @@ public class MarketApiClient(HttpClient httpClient)
             {
                 break;
             }
+
             if (market is not null)
             {
                 markets ??= [];
                 markets.Add(market);
             }
         }
+
         return markets?.ToArray() ?? [];
+    }
+    
+    public async Task<Market> GetMarketAsync(string marketId, CancellationToken cancellationToken = default)
+    {
+        var market = await httpClient.GetFromJsonAsync<Market>($"/market/{marketId}", cancellationToken);
+        return market ?? throw new InvalidOperationException($"Market with ID {marketId} not found.");
     }
 }

@@ -74,11 +74,10 @@ app.MapDefaultEndpoints();
 using (var scope = app.Services.CreateScope())
 {
     var webSocketService = scope.ServiceProvider.GetRequiredService<WebSocketService>();
-    var cancellationTokenSource = new CancellationTokenSource();
-    _ = webSocketService.StartListening(cancellationTokenSource.Token);
+    BackgroundJob.Enqueue(() => webSocketService.StartListening(CancellationToken.None));
 
-    //var dataFetchService = scope.ServiceProvider.GetRequiredService<MarketUpdateService>();
-    //RecurringJob.AddOrUpdate("MarketUpdate", () => dataFetchService.IntegrateAsync(), Cron.Daily, new RecurringJobOptions());
+    var marketUpdateService = scope.ServiceProvider.GetRequiredService<MarketUpdateService>();
+    RecurringJob.AddOrUpdate("MarketUpdate", () => marketUpdateService.IntegrateAsync(), Cron.Daily, new RecurringJobOptions());
 }
 
 app.Run();

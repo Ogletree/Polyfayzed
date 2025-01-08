@@ -1,5 +1,6 @@
 ﻿using System.Net.WebSockets;
 using System.Text;
+using Hangfire;
 using Microsoft.AspNetCore.SignalR;
 
 public class WebSocketService
@@ -12,13 +13,14 @@ public class WebSocketService
         _hubContext = hubContext;
     }
 
+    [AutomaticRetry(Attempts = 0, OnAttemptsExceeded = AttemptsExceededAction.Fail)]
     public async Task StartListening(CancellationToken cancellationToken)
     {
         using var client = new ClientWebSocket();
         await client.ConnectAsync(new Uri(_webSocketUrl), cancellationToken);
 
         var jsonMessage =
-            @"{""assets_ids"":[""106298861292246161053429398983207070416337091865277428512610132653037294562229""],""type"":""market""}";
+            @"{""assets_ids"":[""94572968892630276223550181917961758467908357306087310004647290174044596473779""],""type"":""market""}";
         var buffer = new byte[1024 * 4];
         var messageBuffer = Encoding.UTF8.GetBytes(jsonMessage);
         var segment = new ArraySegment<byte>(messageBuffer);
