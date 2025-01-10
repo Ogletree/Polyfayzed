@@ -15,5 +15,10 @@ public static class EndpointMappings
             var market = await service.GetMarketByIdAsync(marketId);
             return market is not null ? Results.Ok(market) : Results.NotFound();
         }).WithName("GetMarketById");
+
+        app.MapGet("/market/{marketId}/startSocket/{tokenId}", async (string marketId, string tokenId, MarketService service) =>
+        {
+            service.OpenSocket(marketId);
+        }).WithName("OpenSocket");
     }
 }

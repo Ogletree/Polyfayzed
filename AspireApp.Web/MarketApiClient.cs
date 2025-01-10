@@ -30,4 +30,9 @@ public class MarketApiClient(HttpClient httpClient)
         var market = await httpClient.GetFromJsonAsync<Market>($"/market/{marketId}", cancellationToken);
         return market ?? throw new InvalidOperationException($"Market with ID {marketId} not found.");
     }
+
+    public async Task OpenSocketAsync(string marketId, string tokenId)
+    {
+        await httpClient.GetAsync($"/market/{marketId}/startSocket/{tokenId}");
+    }
 }

@@ -1,26 +1,19 @@
 using System.Text.Json;
 using AspireApp.ApiService.Models;
-using AspireApp.ApiService;
 using AspireApp.ApiService.Models.Dto;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 
-public class MarketUpdateService
+namespace AspireApp.ApiService;
+
+public class MarketUpdateService(PolyfayzedContext context, HttpClient httpClient)
 {
-    private readonly PolyfayzedContext _context;
-    private readonly HttpClient _httpClient;
     private const int BatchSize = 100; // Adjust batch size as needed
 
-    public MarketUpdateService(PolyfayzedContext context, HttpClient httpClient)
-    {
-        _context = context;
-        _httpClient = httpClient;
-    }
-
-    [AutomaticRetry(Attempts = 20, OnAttemptsExceeded = AttemptsExceededAction.Fail)]
+    [AutomaticRetry(Attempts = 0, OnAttemptsExceeded = AttemptsExceededAction.Fail)]
     public async Task IntegrateAsync()
     {
-        var cursorState = await _context.CursorStates.FirstOrDefaultAsync(x => x.Id == 1) ?? new CursorState { NextCursor = string.Empty };
+        var cursorState = await context.CursorStates.FirstOrDefaultAsync(x => x.Id == 1) ?? new CursorState { NextCursor = string.Empty };
 
         ApiResponse response;
         do
@@ -32,7 +25,7 @@ public class MarketUpdateService
             for (int i = 0; i < markets.Count; i += BatchSize)
             {
                 var batch = markets.Skip(i).Take(BatchSize).Select(m => m.ConditionId).ToList();
-                var batchExistingMarkets = await _context.Markets
+                var batchExistingMarkets = await context.Markets
                     .Where(market => batch.Contains(market.ConditionId))
                     .ToListAsync();
                 existingMarkets.AddRange(batchExistingMarkets);
@@ -42,7 +35,7 @@ public class MarketUpdateService
             var newMarkets = markets.Where(m => !existingConditionIds.Contains(m.ConditionId)).ToList();
             if (newMarkets.Any())
             {
-                _context.Markets.AddRange(newMarkets);
+                context.Markets.AddRange(newMarkets);
             }
 
             foreach (var existingMarket in existingMarkets)
@@ -81,17 +74,17 @@ public class MarketUpdateService
             {
                 cursorState.NextCursor = response.next_cursor;
                 cursorState.LastUpdated = DateTime.UtcNow;
-                _context.CursorStates.Update(cursorState);
+                context.CursorStates.Update(cursorState);
                 Console.WriteLine($"NextCursor: {response.next_cursor}");
             }
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         } while (!string.IsNullOrEmpty(cursorState.NextCursor) && response.next_cursor != "LTE=");
     }
 
     private async Task<ApiResponse> FetchMarkets(string nextCursor)
     {
         var url = $"https://clob.polymarket.com/markets?next_cursor={nextCursor}";
-        var response = await _httpClient.GetStringAsync(url);
+        var response = await httpClient.GetStringAsync(url);
         return JsonSerializer.Deserialize<ApiResponse>(response);
     }
 

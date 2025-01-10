@@ -14,25 +14,33 @@ public class WebSocketService(IHubContext<WebSocketHub> hubContext)
     [AutomaticRetry(Attempts = 0, OnAttemptsExceeded = AttemptsExceededAction.Fail)]
     public async Task StartListening(CancellationToken cancellationToken)
     {
-        using var client = new ClientWebSocket();
-        await client.ConnectAsync(new Uri(WebSocketUrl), cancellationToken);
-
-        var jsonMessage = @"{""assets_ids"":[""111832653316635030201702302402456472330204850704956108723129421121998606282430""],""type"":""market""}";
-        var buffer = new byte[1024 * 4];
-        var messageBuffer = Encoding.UTF8.GetBytes(jsonMessage);
-        var segment = new ArraySegment<byte>(messageBuffer);
-
-        // Send the message
-        await client.SendAsync(segment, WebSocketMessageType.Text, true, cancellationToken);
-        while (client.State == WebSocketState.Open)
+        try
         {
-            var result = await client.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
-            if (result.MessageType == WebSocketMessageType.Text)
+            using var client = new ClientWebSocket();
+            await client.ConnectAsync(new Uri(WebSocketUrl), cancellationToken);
+
+            const string jsonMessage = @"{""assets_ids"":[""36040360182065042048683060954028992364650049259826900000064052483130553867376""],""type"":""market""}";
+            var buffer = new byte[1024 * 4];
+            var messageBuffer = Encoding.UTF8.GetBytes(jsonMessage);
+            var segment = new ArraySegment<byte>(messageBuffer);
+
+            // Send the message
+            await client.SendAsync(segment, WebSocketMessageType.Text, true, cancellationToken);
+            while (client.State == WebSocketState.Open)
             {
-                var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                ProcessMessage(message);
-                await hubContext.Clients.All.SendAsync("ReceiveMessage", JsonSerializer.Serialize(_orderBook));
+                var result = await client.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+                if (result.MessageType == WebSocketMessageType.Text)
+                {
+                    var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    ProcessMessage(message);
+                    var serialize = JsonSerializer.Serialize(_orderBook);
+                    await hubContext.Clients.All.SendAsync("ReceiveMessage", serialize, cancellationToken: cancellationToken);
+                }
             }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
         }
     }
 
@@ -56,6 +64,8 @@ public class WebSocketService(IHubContext<WebSocketHub> hubContext)
                 }
             }
         }
+        _orderBook.Bids = _orderBook.Bids.OrderByDescending(x => x.Price).ToList();
+        _orderBook.Asks = _orderBook.Asks.OrderByDescending(x => x.Price).ToList();
     }
 
     private void UpdateOrderBook(JsonElement root)
@@ -103,12 +113,27 @@ public class WebSocketService(IHubContext<WebSocketHub> hubContext)
 
     private void UpdateOrderList(List<Order> orders, decimal price, decimal size)
     {
-        var order = orders.FirstOrDefault(o => o.Price == price);
+        Order order = null;
+        try
+        {
+            order = orders.FirstOrDefault(o => o.Price == price);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
         if (order != null)
         {
             if (size == 0)
             {
-                orders.Remove(order);
+                try
+                {
+                    orders.Remove(order);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                }
             }
             else
             {
@@ -120,16 +145,4 @@ public class WebSocketService(IHubContext<WebSocketHub> hubContext)
             orders.Add(new Order { Price = price, Size = size });
         }
     }
-}
-
-public class OrderBook
-{
-    public List<Order> Bids { get; set; } = [];
-    public List<Order> Asks { get; set; } = [];
-}
-
-public class Order
-{
-    public decimal Price { get; set; }
-    public decimal Size { get; set; }
 }

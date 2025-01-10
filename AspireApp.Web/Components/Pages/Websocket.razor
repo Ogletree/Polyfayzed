@@ -1,4 +1,5 @@
 ﻿@page "/websocket"
+@using AspireApp.ApiService
 @using Microsoft.AspNetCore.SignalR.Client
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
@@ -6,67 +7,63 @@
 
 <h3>Order Book</h3>
 
-@if (orderBookData == null)
+@if (_orderBook == null)
 {
     <p><em>Loading...</em></p>
 }
 else 
 {
-<table class="table">
-    <thead>
-    <tr>
-        <th>Price</th>
-        <th>Size</th>
-        <th>Depth</th>
-    </tr>
-    </thead>
-    <tbody>
-    @foreach (var bid in orderBookData.Bids)
-    {
+    <table class="table">
+        <thead>
         <tr>
-            <td>@bid.Price</td>
-            <td>@bid.Size</td>
-            <td>
-                <div class="progress">
-                    <div class="progress-bar" role="progressbar" style="width: @(bid.Size / GetMaxSize() * 100)%" aria-valuenow="@bid.Size" aria-valuemin="0" aria-valuemax="@GetMaxSize()"></div>
-                </div>
-            </td>
+            <th>Price</th>
+            <th>Size</th>
+            <th>Depth</th>
         </tr>
-    }
-    </tbody>
-</table>
-
-<h3>Asks</h3>
-
-<table class="table">
-    <thead>
-    <tr>
-        <th>Price</th>
-        <th>Size</th>
-        <th>Depth</th>
-    </tr>
-    </thead>
-    <tbody>
-    @foreach (var ask in orderBookData.Asks)
-    {
-        <tr>
-            <td>@ask.Price</td>
-            <td>@ask.Size</td>
-            <td>
-                <div class="progress">
-                    <div class="progress-bar bg-danger" role="progressbar" style="width: @(ask.Size / GetMaxSize() * 100)%" aria-valuenow="@ask.Size" aria-valuemin="0" aria-valuemax="@GetMaxSize()"></div>
-                </div>
-            </td>
-        </tr>
-    }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+        @foreach (var ask in _orderBook.Asks)
+        {
+            <tr>
+                <td>@ask.Price</td>
+                <td>@ask.Size</td>
+                <td>
+                    <div class="progress">
+                        <div class="progress-bar bg-danger" role="progressbar" style="width: @(ask.Size / GetAskSize() * 100)%" aria-valuenow="@ask.Size" aria-valuemin="0" aria-valuemax="@GetBidSize()"></div>
+                    </div>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Price</th>
+                <th>Size</th>
+                <th>Depth</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var bid in _orderBook.Bids)
+            {
+                <tr>
+                    <td>@bid.Price</td>
+                    <td>@bid.Size</td>
+                    <td>
+                        <div class="progress">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: @(bid.Size / GetBidSize() * 100)%" aria-valuenow="@bid.Size" aria-valuemin="0" aria-valuemax="@GetBidSize()"></div>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 }
+
 @code {
     private HubConnection? _hubConnection;
-    private readonly List<string> _messages = [];
-    private string _message = string.Empty;
-    private OrderBookData orderBookData;
+    private OrderBook? _orderBook;
 
     protected override async Task OnInitializedAsync()
     {
@@ -76,20 +73,23 @@ else
 
         _hubConnection.On<string>("ReceiveMessage", message =>
         {
-            //_messages.Add(message);
-            _message = message;
-            orderBookData = System.Text.Json.JsonSerializer.Deserialize<OrderBookData>(message);
+            _orderBook = System.Text.Json.JsonSerializer.Deserialize<OrderBook>(message);
             InvokeAsync(StateHasChanged);
         });
 
         await _hubConnection.StartAsync();
     }
 
-    private double GetMaxSize()
+    private decimal GetBidSize()
     {
-        double maxBidSize = orderBookData.Bids.Max(b => b.Size);
-        double maxAskSize = orderBookData.Asks.Max(a => a.Size);
-        return Math.Max(maxBidSize, maxAskSize);
+        var maxBidSize = _orderBook!.Bids.Max(b => b.Size);
+        return maxBidSize;
+    }
+
+    private decimal GetAskSize()
+    {
+        var maxAskSize = _orderBook!.Asks.Max(a => a.Size);
+        return maxAskSize;
     }
 
     public async ValueTask DisposeAsync()
@@ -97,18 +97,3 @@ else
         await _hubConnection!.DisposeAsync();
     }
 }
-
-        @code
-        {
-            public class OrderBookData
-            {
-                public List<Order> Bids { get; set; }
-                public List<Order> Asks { get; set; }
-            }
-
-            public class Order
-            {
-                public double Price { get; set; }
-                public double Size { get; set; }
-            }
-        }
