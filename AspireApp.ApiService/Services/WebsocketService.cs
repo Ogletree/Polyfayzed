@@ -1,10 +1,11 @@
 ﻿using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using AspireApp.ApiService.Domain;
 using Hangfire;
 using Microsoft.AspNetCore.SignalR;
 
-namespace AspireApp.ApiService;
+namespace AspireApp.ApiService.Services;
 
 public class WebSocketService(IHubContext<WebSocketHub> hubContext)
 {
@@ -34,7 +35,7 @@ public class WebSocketService(IHubContext<WebSocketHub> hubContext)
                     var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
                     ProcessMessage(message);
                     var serialize = JsonSerializer.Serialize(_orderBook);
-                    await hubContext.Clients.All.SendAsync("ReceiveMessage", serialize, cancellationToken: cancellationToken);
+                    await hubContext.Clients.Group("OrderBookGroup").SendAsync("ReceiveMessage", serialize, cancellationToken: cancellationToken);
                 }
             }
         }

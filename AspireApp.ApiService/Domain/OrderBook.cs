@@ -1,4 +1,4 @@
-﻿namespace AspireApp.ApiService;
+﻿namespace AspireApp.ApiService.Domain;
 
 public class OrderBook
 {

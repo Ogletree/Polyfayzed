@@ -1,5 +1,7 @@
 using AspireApp.ApiService;
 using AspireApp.ApiService.Models;
+using AspireApp.ApiService.Services;
+using AspireApp.ApiService.Strategy;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 
@@ -34,6 +36,7 @@ builder.Services.AddDbContext<PolyfayzedContext>(options =>
 
 builder.Services.AddScoped<MarketUpdateService>();
 builder.Services.AddScoped<MarketService>();
+builder.Services.AddScoped<JohnyComeLately>();
 
 var app = builder.Build();
 app.UseCors();
@@ -59,11 +62,14 @@ app.MapDefaultEndpoints();
 
 using (var scope = app.Services.CreateScope())
 {
-    var webSocketService = scope.ServiceProvider.GetRequiredService<WebSocketService>();
-    BackgroundJob.Enqueue(() => webSocketService.StartListening(CancellationToken.None));
+    //var webSocketService = scope.ServiceProvider.GetRequiredService<WebSocketService>();
+    //BackgroundJob.Enqueue(() => webSocketService.StartListening(CancellationToken.None));
 
-    var marketUpdateService = scope.ServiceProvider.GetRequiredService<MarketUpdateService>();
-    RecurringJob.AddOrUpdate("MarketUpdate", () => marketUpdateService.IntegrateAsync(), Cron.Daily, new RecurringJobOptions());
+    var johnyStrat = scope.ServiceProvider.GetRequiredService<JohnyComeLately>();
+    BackgroundJob.Enqueue(() => johnyStrat.IntegrateAsync());
+
+    //var marketUpdateService = scope.ServiceProvider.GetRequiredService<MarketUpdateService>();
+    //RecurringJob.AddOrUpdate("MarketUpdate", () => marketUpdateService.IntegrateAsync(), Cron.Daily, new RecurringJobOptions());
 }
 
 app.Run();

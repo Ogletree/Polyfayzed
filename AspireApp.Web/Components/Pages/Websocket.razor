@@ -1,5 +1,5 @@
 ﻿@page "/websocket"
-@using AspireApp.ApiService
+@using AspireApp.ApiService.Domain
 @using Microsoft.AspNetCore.SignalR.Client
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
@@ -78,6 +78,7 @@ else
         });
 
         await _hubConnection.StartAsync();
+        await _hubConnection.SendAsync("JoinGroup", "OrderBookGroup");
     }
 
     private decimal GetBidSize()
@@ -94,6 +95,10 @@ else
 
     public async ValueTask DisposeAsync()
     {
-        await _hubConnection!.DisposeAsync();
+        if (_hubConnection != null)
+        {
+            await _hubConnection.SendAsync("LeaveGroup", "OrderBookGroup");
+            await _hubConnection.DisposeAsync();
+        }
     }
 }

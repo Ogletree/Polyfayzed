@@ -4,7 +4,7 @@ using AspireApp.ApiService.Models.Dto;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 
-namespace AspireApp.ApiService;
+namespace AspireApp.ApiService.Services;
 
 public class MarketUpdateService(PolyfayzedContext context, HttpClient httpClient)
 {

@@ -16,7 +16,7 @@ public static class EndpointMappings
             return market is not null ? Results.Ok(market) : Results.NotFound();
         }).WithName("GetMarketById");
 
-        app.MapGet("/market/{marketId}/startSocket/{tokenId}", async (string marketId, string tokenId, MarketService service) =>
+        app.MapGet("/market/{marketId}/startSocket/{tokenId}", (string marketId, string tokenId, MarketService service) =>
         {
             service.OpenSocket(marketId);
         }).WithName("OpenSocket");

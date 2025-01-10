@@ -1,4 +1,5 @@
 using AspireApp.ApiService.Models;
+using AspireApp.ApiService.Services;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 
