@@ -27,6 +27,10 @@
          "ObjectType": 0
       },
       {
+         "Name": "[dbo].[Team]",
+         "ObjectType": 0
+      },
+      {
          "Name": "[dbo].[Token]",
          "ObjectType": 0
       }

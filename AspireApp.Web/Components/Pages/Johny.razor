@@ -1,5 +1,4 @@
 ﻿@page "/johny"
-@using AspireApp.ApiService.Domain
 @using AspireApp.ApiService.Strategy
 @using Microsoft.AspNetCore.SignalR.Client
 @inject NavigationManager Navigation
@@ -17,18 +16,30 @@ else
     <table class="table">
         <thead>
             <tr>
-                <th>Icon</th>
+                <th></th>
                 <th>Title</th>
-                <th>Game Start Time</th>
+                <th>Score</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var thing in _events)
+            @foreach (var myEvent in _events)
             {
                 <tr>
-                    <td><img src="@thing.Icon" alt="Market Icon" style="width: 50px;" /></td>
-                    <td>@thing.Title</td>
-                    <td>@thing.Markets[0].GameStartTime</td>
+                    <td><img src="@myEvent.Icon" alt="Market Icon" style="width: 50px;" /></td>
+                    <td>
+                        <div>
+                            @GetText(myEvent)
+                        </div>
+                        <div>
+                            <img src="@myEvent.Icons[0]" style="width: 50px;" /> @myEvent.Outcomes?[0]
+                        </div>
+                        <div>
+                            <img src="@myEvent.Icons[1]" style="width: 50px;" /> @myEvent.Outcomes?[1]
+                        </div>
+                    </td>
+                    <td>@myEvent.Scores?[0]</td>
+                    <td></td>
                 </tr>
             }
         </tbody>
@@ -37,14 +48,14 @@ else
 
 @code {
     private HubConnection? _hubConnection;
-    private List<GammaEvent>? _events;
+    private List<MyEvent>? _events;
 
     protected override async Task OnInitializedAsync()
     {
         _hubConnection = new HubConnectionBuilder().WithUrl("https://localhost:7593/websockethub").Build();
         _hubConnection.On<string>("Events", message =>
         {
-            _events = System.Text.Json.JsonSerializer.Deserialize<List<GammaEvent>>(message)!;
+            _events = System.Text.Json.JsonSerializer.Deserialize<List<MyEvent>>(message)!;
             InvokeAsync(StateHasChanged);
         });
         await _hubConnection.StartAsync();
@@ -58,5 +69,16 @@ else
             await _hubConnection.SendAsync("LeaveGroup", "JohnyComeLately");
             await _hubConnection.DisposeAsync();
         }
+    }
+
+    private string GetText(MyEvent myEvent)
+    {
+        return myEvent.Period switch
+        {
+            "FT" => "Final",
+            "POST" => "Finished",
+            "NS" => "Not Started",
+            _ => $"{myEvent.Period} - {myEvent.Elapsed}"
+        };
     }
 }

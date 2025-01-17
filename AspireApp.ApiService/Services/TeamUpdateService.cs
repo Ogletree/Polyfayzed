@@ -7,7 +7,7 @@ namespace AspireApp.ApiService.Services;
 
 public class TeamUpdateService(PolyfayzedContext context, HttpClient httpClient, JsonSerializerOptions jsonOptions)
 {
-/*    private const int BatchSize = 100;
+    private const int BatchSize = 100;
 
     [AutomaticRetry(Attempts = 0, OnAttemptsExceeded = AttemptsExceededAction.Fail)]
     public async Task IntegrateAsync()
@@ -58,5 +58,5 @@ public class TeamUpdateService(PolyfayzedContext context, HttpClient httpClient,
         var url = "https://gamma-api.polymarket.com/teams?limit=2000";
         var response = await httpClient.GetStringAsync(url);
         return JsonSerializer.Deserialize<List<Team>>(response, jsonOptions);
-    }*/
+    }
 }

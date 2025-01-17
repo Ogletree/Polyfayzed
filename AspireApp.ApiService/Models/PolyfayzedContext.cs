@@ -19,6 +19,8 @@ public partial class PolyfayzedContext : DbContext
 
     public virtual DbSet<Tag> Tags { get; set; }
 
+    public virtual DbSet<Team> Teams { get; set; }
+
     public virtual DbSet<Token> Tokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -50,6 +52,26 @@ public partial class PolyfayzedContext : DbContext
             entity.Property(e => e.Name).IsRequired();
 
             entity.HasOne(d => d.Market).WithMany(p => p.Tags).HasForeignKey(d => d.MarketId);
+        });
+
+        modelBuilder.Entity<Team>(entity =>
+        {
+            entity.ToTable("Team");
+
+            entity.Property(e => e.Abbreviation)
+                .IsRequired()
+                .HasMaxLength(10);
+            entity.Property(e => e.Alias).HasMaxLength(50);
+            entity.Property(e => e.League)
+                .IsRequired()
+                .HasMaxLength(50);
+            entity.Property(e => e.Logo)
+                .IsRequired()
+                .HasMaxLength(255);
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(100);
+            entity.Property(e => e.Record).HasMaxLength(10);
         });
 
         modelBuilder.Entity<Token>(entity =>
