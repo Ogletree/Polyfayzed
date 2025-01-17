@@ -1,2 +1,2 @@
 ﻿Create a migration:
-dotnet ef migrations add DescriptionHere --project AspireApp.ApiService --context MyDbContext --verbose
+dotnet ef migrations add DescriptionHere --project AspireApp.ApiService --context PolyfayzedContext --verbose

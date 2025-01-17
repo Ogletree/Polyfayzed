@@ -2,7 +2,7 @@
 // ReSharper disable InconsistentNaming
 namespace AspireApp.ApiService.Models.Dto;
 
-public class MarketDto
+public class ApiMarketDto
 {
     public bool enable_order_book { get; set; }
     public bool active { get; set; }

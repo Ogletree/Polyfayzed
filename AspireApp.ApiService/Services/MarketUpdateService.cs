@@ -88,7 +88,7 @@ public class MarketUpdateService(PolyfayzedContext context, HttpClient httpClien
         return JsonSerializer.Deserialize<ApiResponse>(response);
     }
 
-    private static Market MapToMarket(MarketDto dto)
+    private static Market MapToMarket(ApiMarketDto dto)
     {
         return new Market
         {

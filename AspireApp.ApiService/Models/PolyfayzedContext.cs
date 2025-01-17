@@ -13,17 +13,16 @@ public partial class PolyfayzedContext : DbContext
     {
     }
 
+    public virtual DbSet<CursorState> CursorStates { get; set; }
+
     public virtual DbSet<Market> Markets { get; set; }
 
     public virtual DbSet<Tag> Tags { get; set; }
 
     public virtual DbSet<Token> Tokens { get; set; }
 
-    public virtual DbSet<CursorState> CursorStates { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<CursorState>().HasKey(c => c.Id);
-        
         modelBuilder.Entity<Market>(entity =>
         {
             entity.ToTable("Market");
@@ -34,6 +33,7 @@ public partial class PolyfayzedContext : DbContext
             entity.Property(e => e.Fpmm).IsRequired();
             entity.Property(e => e.MakerBaseFee).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.MarketSlug).IsRequired();
+            entity.Property(e => e.MinimumOrderSize).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.MinimumTickSize).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.Question).IsRequired();
             entity.Property(e => e.QuestionId).IsRequired();

@@ -101,7 +101,7 @@ namespace AspireApp.ApiService.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("MinimumOrderSize")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18, 2)");
 
                     b.Property<decimal>("MinimumTickSize")
                         .HasColumnType("decimal(18, 2)");

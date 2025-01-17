@@ -4,8 +4,15 @@ using AspireApp.ApiService.Services;
 using AspireApp.ApiService.Strategy;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
+var jsonOptions = new JsonSerializerOptions
+{
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    PropertyNameCaseInsensitive = true
+};
+builder.Services.AddSingleton(jsonOptions); 
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(builder =>
@@ -35,6 +42,7 @@ builder.Services.AddDbContext<PolyfayzedContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<MarketUpdateService>();
+builder.Services.AddScoped<TeamUpdateService>();
 builder.Services.AddScoped<MarketService>();
 builder.Services.AddScoped<JohnyComeLately>();
 
@@ -65,11 +73,14 @@ using (var scope = app.Services.CreateScope())
     //var webSocketService = scope.ServiceProvider.GetRequiredService<WebSocketService>();
     //BackgroundJob.Enqueue(() => webSocketService.StartListening(CancellationToken.None));
 
-    var johnyStrat = scope.ServiceProvider.GetRequiredService<JohnyComeLately>();
-    BackgroundJob.Enqueue(() => johnyStrat.IntegrateAsync());
+    var johnyComeLately = scope.ServiceProvider.GetRequiredService<JohnyComeLately>();
+    RecurringJob.AddOrUpdate("JohnyComeLately", () => johnyComeLately.IntegrateAsync(), Cron.Weekly, new RecurringJobOptions());
 
-    //var marketUpdateService = scope.ServiceProvider.GetRequiredService<MarketUpdateService>();
-    //RecurringJob.AddOrUpdate("MarketUpdate", () => marketUpdateService.IntegrateAsync(), Cron.Daily, new RecurringJobOptions());
+    var teamUpdateService = scope.ServiceProvider.GetRequiredService<TeamUpdateService>();
+    //RecurringJob.AddOrUpdate("TeamUpdate", () => teamUpdateService.IntegrateAsync(), Cron.Weekly, new RecurringJobOptions());
+
+    var marketUpdateService = scope.ServiceProvider.GetRequiredService<MarketUpdateService>();
+    RecurringJob.AddOrUpdate("MarketUpdate", () => marketUpdateService.IntegrateAsync(), Cron.Weekly, new RecurringJobOptions());
 }
 
 app.Run();

@@ -1,0 +1,62 @@
+﻿@page "/johny"
+@using AspireApp.ApiService.Domain
+@using AspireApp.ApiService.Strategy
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+
+<h3>Order Book</h3>
+
+@if (_events == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Icon</th>
+                <th>Title</th>
+                <th>Game Start Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var thing in _events)
+            {
+                <tr>
+                    <td><img src="@thing.Icon" alt="Market Icon" style="width: 50px;" /></td>
+                    <td>@thing.Title</td>
+                    <td>@thing.Markets[0].GameStartTime</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private HubConnection? _hubConnection;
+    private List<GammaEvent>? _events;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _hubConnection = new HubConnectionBuilder().WithUrl("https://localhost:7593/websockethub").Build();
+        _hubConnection.On<string>("Events", message =>
+        {
+            _events = System.Text.Json.JsonSerializer.Deserialize<List<GammaEvent>>(message)!;
+            InvokeAsync(StateHasChanged);
+        });
+        await _hubConnection.StartAsync();
+        await _hubConnection.SendAsync("JoinGroup", "JohnyComeLately");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection != null)
+        {
+            await _hubConnection.SendAsync("LeaveGroup", "JohnyComeLately");
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}

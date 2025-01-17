@@ -2,7 +2,6 @@
 #nullable disable
 using System;
 using System.Collections.Generic;
-using System.Text.Json.Serialization;
 
 namespace AspireApp.ApiService.Models;
 
@@ -14,6 +13,5 @@ public partial class Tag
 
     public string Name { get; set; }
 
-    [JsonIgnore]
     public virtual Market Market { get; set; }
 }

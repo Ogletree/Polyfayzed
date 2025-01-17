@@ -15,6 +15,10 @@
    "T4TemplatePath": null,
    "Tables": [
       {
+         "Name": "[dbo].[CursorStates]",
+         "ObjectType": 0
+      },
+      {
          "Name": "[dbo].[Market]",
          "ObjectType": 0
       },
