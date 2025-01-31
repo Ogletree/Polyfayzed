@@ -1,65 +1,100 @@
 ﻿@page "/johny"
+@using System.Text.Json
+@using AspireApp.ApiService.Services
 @using AspireApp.ApiService.Strategy
 @using Microsoft.AspNetCore.SignalR.Client
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-
-<h3>Order Book</h3>
-
 @if (_events == null)
 {
-    <p><em>Loading...</em></p>
+    <p>
+        <em>Loading...</em>
+    </p>
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th></th>
-                <th>Title</th>
-                <th>Score</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var myEvent in _events)
-            {
-                <tr>
-                    <td><img src="@myEvent.Icon" alt="Market Icon" style="width: 50px;" /></td>
-                    <td>
-                        <div>
-                            @GetText(myEvent)
+    <h2>Positions</h2>
+    <div class="d-flex flex-wrap">
+        @foreach (var position in _positions)
+        {
+            <div class="card m-2" style="width: 18rem;">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">@position.Title</h5>
+                    
+                    <p class="card-text">
+                        <span><svg xmlns="http://www.w3.org/2000/svg" width="20" height="14" viewBox="0 0 20 14" fill="none" class="c-PJLV"><path d="M0 8V5.49951H20V7.74951L5.5 14.0005L0 8Z" fill="#21832D"></path><path d="M12.5 -0.000488281L0 5.49951L5.5 11.6245L20 5.49951L12.5 -0.000488281Z" fill="#3AB549"></path><path d="M3.5 5.49951C4.3 6.29951 3.5 6.66667 3 7L5 9C6.2 8.2 6.66667 8.83333 7 9.5L15.5 6C13.9 4.8 15 4.33284 15.5 3.99951L13.5 2.49951C12.3 2.89951 11.3333 2.33285 11 1.99951L3.5 5.49951Z" fill="#92FF04"></path><ellipse cx="9.5" cy="5.49951" rx="2.5" ry="1.5" fill="#3AB549"></ellipse></svg></span>
+                        @((position.Size - position.InitialValue).ToString("C2"))
+                    </p>
+                </div>
+            </div>
+        }
+    </div>
+
+    <h2>Sports</h2>
+    <div class="cards-container">
+        @* @foreach (var group in _events.GroupBy(e => e.Icon)) *@
+        @foreach (var myEvent in _events)
+        {
+            <div class="card">
+                <div class="card-header">
+                    <div style="display: flex;">
+                        <span class="status">@IfLiveText(myEvent)</span>
+                        <span class="@(IfLiveText(myEvent) != null ? "status" : "")">@GetPeriod(myEvent)</span>
+                    </div>
+                    <span>&nbsp;@GetVolume(@myEvent)</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: @GetProgressPercentage(myEvent)%"></div>
+                </div>
+                <div class="card-body">
+                    <div class="game-row">
+                        <div class="team-info">
+                            <img src="@myEvent.Icons[0]">
+                            <span class="team-name">@myEvent.Outcomes[0]</span>
                         </div>
-                        <div>
-                            <img src="@myEvent.Icons[0]" style="width: 50px;" /> @myEvent.Outcomes?[0]
+                        <span class="team-score">@GetPriceOrScore(myEvent, 0)</span>
+                    </div>
+                    <div class="game-row">
+                        <div class="team-info">
+                            <img src="@myEvent.Icons[1]">
+                            <span class="team-name">@myEvent.Outcomes[1]</span>
                         </div>
-                        <div>
-                            <img src="@myEvent.Icons[1]" style="width: 50px;" /> @myEvent.Outcomes?[1]
-                        </div>
-                    </td>
-                    <td>@myEvent.Scores?[0]</td>
-                    <td></td>
-                </tr>
-            }
-        </tbody>
-    </table>
+                        <span class="team-score">@GetPriceOrScore(myEvent, 1)</span>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
 }
 
 @code {
     private HubConnection? _hubConnection;
     private List<MyEvent>? _events;
+    private List<Position> _positions = new();
+    private bool _initialized;
 
     protected override async Task OnInitializedAsync()
     {
+        if (_initialized) return;
         _hubConnection = new HubConnectionBuilder().WithUrl("https://localhost:7593/websockethub").Build();
         _hubConnection.On<string>("Events", message =>
         {
-            _events = System.Text.Json.JsonSerializer.Deserialize<List<MyEvent>>(message)!;
+            _events = JsonSerializer.Deserialize<List<MyEvent>>(message)!;
+            _events = _events.OrderBy(x => x.GameStartTime).ToList();
+            _events = _events.Where(x => x.Period != "POST").ToList();
+            InvokeAsync(StateHasChanged);
+        });
+        _hubConnection.On<string>("Positions", message =>
+        {
+            _positions = JsonSerializer.Deserialize<List<Position>>(message)!;
             InvokeAsync(StateHasChanged);
         });
         await _hubConnection.StartAsync();
         await _hubConnection.SendAsync("JoinGroup", "JohnyComeLately");
+        await _hubConnection.SendAsync("JoinGroup", "Positions");
+
+        _initialized = true;
     }
 
     public async ValueTask DisposeAsync()
@@ -67,18 +102,68 @@ else
         if (_hubConnection != null)
         {
             await _hubConnection.SendAsync("LeaveGroup", "JohnyComeLately");
+            await _hubConnection.SendAsync("LeaveGroup", "Positions");
             await _hubConnection.DisposeAsync();
         }
     }
 
-    private string GetText(MyEvent myEvent)
+    private int GetProgressPercentage(MyEvent myEvent)
     {
+        var progressPercentage = decimal.Parse(myEvent.OutcomePrices?[0] ?? string.Empty);
+        return (int)(progressPercentage * 100);
+    }
+
+    private string GetPeriod(MyEvent myEvent)
+    {
+        if (myEvent.Period.StartsWith("End")) return myEvent.Period;
         return myEvent.Period switch
         {
             "FT" => "Final",
             "POST" => "Finished",
-            "NS" => "Not Started",
+            "NS" => ConvertToPacificTime(@myEvent.GameStartTime),
+            "HT" => "Half Time",
             _ => $"{myEvent.Period} - {myEvent.Elapsed}"
         };
+    }
+
+    private string ConvertToPacificTime(string utcTime)
+    {
+        if (DateTimeOffset.TryParse(utcTime, out var dateTimeOffset))
+        {
+            var pacificTime = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(dateTimeOffset, "Pacific Standard Time");
+            return pacificTime.ToString("h:mm tt");
+        }
+        return utcTime;
+    }
+
+    private string GetVolume(MyEvent myEvent)
+    {
+        if (myEvent.Volume < 1000)
+        {
+            return myEvent.Volume.ToString("C2");
+        }
+
+        if (myEvent.Volume < 1_000_000)
+        {
+            return $"${(myEvent.Volume / 1000):0.0}k";
+        }
+
+        return $"${(myEvent.Volume / 1_000_000):0.0}M";
+    }
+
+    private string? IfLiveText(MyEvent myEvent)
+    {
+        List<string> finished = ["FT", "POST", "NS"];
+        return finished.Contains(myEvent.Period) ? null : "LIVE •\u00a0";
+    }
+
+    private string? GetPriceOrScore(MyEvent myEvent, int i)
+    {
+        if (myEvent.Period == "NS")
+        {
+            var price = decimal.Parse(myEvent.OutcomePrices[i]) * 100;
+            return $"{price:F1}\u00a2";
+        }
+        return myEvent.Scores?[i];
     }
 }

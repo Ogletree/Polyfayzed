@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Diagnostics;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using AspireApp.ApiService.Models;
 using Microsoft.AspNetCore.SignalR;
@@ -6,29 +7,67 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AspireApp.ApiService.Strategy;
 
-public class JohnyComeLately(PolyfayzedContext context, HttpClient httpClient, IHubContext<WebSocketHub> hubContext, JsonSerializerOptions jsonOptions)
+using System.Threading;
+
+public class JohnyComeLately(PolyfayzedContext context, HttpClient httpClient,
+    IHubContext<WebSocketHub> hubContext, JsonSerializerOptions jsonOptions, LockManager lockManager)
 {
     private readonly List<GammaEvent> _events = [];
     private List<Team> _teams = [];
+    private readonly List<string> _tokens = [];
+    private const string LockName = "JohnyComeLatelyLock";
 
-
-
-    public async Task IntegrateAsync()
+    public async Task ExecuteAsync(CancellationToken ctsToken)
     {
-        _teams = await context.Teams.ToListAsync();
-        do
-        {
-            await FetchEvents();
-            Thread.Sleep(1000 * 10); // 10 seconds
-        } while (true);
-    }
-
-    private async Task FetchEvents()
-    { //"https://gamma-api.polymarket.com/events?&series_id=1&series_id=2&series_id=36&series_id=10002&series_id=4&limit=100&closed=false&start_time_max=2025-01-17T21:04:00.000Z"
-        const string url = "https://gamma-api.polymarket.com/events?&series_id=2&limit=100&closed=false&start_time_max=2025-01-17T21:04:00.000Z";
+        if (!await lockManager.TryAcquireLockAsync(LockName)) return;
         try
         {
-            var response = await httpClient.GetStringAsync(url);
+            _teams = await context.Teams.ToListAsync(ctsToken);
+            while (!ctsToken.IsCancellationRequested)
+            {
+                await FetchEvents(ctsToken);
+                await Task.Delay(10000, ctsToken);
+            }
+        }
+        finally
+        {
+            lockManager.ReleaseLock(LockName);
+        }
+    }
+
+    public async Task ExecuteTypeScriptFileAsync(string token)
+    {
+        var processStartInfo = new ProcessStartInfo
+        {
+            FileName = @"C:\Users\brian\AppData\Roaming\npm\ts-node.cmd",
+            Arguments = @$"c:\repos\Polymarket\mine\createOrder.ts {token} .999 3000",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            WorkingDirectory = @"c:\repos\Polymarket\mine"
+        };
+
+        using var process = new Process();
+        process.StartInfo = processStartInfo;
+        process.Start();
+        var output = await process.StandardOutput.ReadToEndAsync();
+        var error = await process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+
+        Console.WriteLine(output);
+        if (!string.IsNullOrEmpty(error))
+        {
+            Console.WriteLine($"Error: {error}");
+        }
+    }
+
+    private async Task FetchEvents(CancellationToken ctsToken)
+    { 
+        const string url = "https://gamma-api.polymarket.com/events?&series_id=1&series_id=2&series_id=36&series_id=10002&series_id=4&limit=100&closed=false&start_time_max=2025-01-31T22:19:00.000Z";
+        try
+        {
+            var response = await httpClient.GetStringAsync(url, ctsToken);
             var events = JsonSerializer.Deserialize<List<GammaEvent>>(response, jsonOptions);
             foreach (var gammaEvent in events)
             {
@@ -44,7 +83,8 @@ public class JohnyComeLately(PolyfayzedContext context, HttpClient httpClient, I
             }
 
             var myEvents = new List<MyEvent>();
-            foreach (var gammaEvent in _events.Where(x=> x.SeriesSlug == "nba"))
+            string[] list = ["nba", "nhl"];
+            foreach (var gammaEvent in _events.Where(x=> list.Contains(x.SeriesSlug)))
             {
                 var myEvent = new MyEvent
                 {
@@ -59,20 +99,37 @@ public class JohnyComeLately(PolyfayzedContext context, HttpClient httpClient, I
                     Outcomes = gammaEvent.Markets[0].Outcomes != null ? JsonSerializer.Deserialize<string[]>(gammaEvent.Markets[0].Outcomes) : null,
                     OutcomePrices = gammaEvent.Markets[0].OutcomePrices != null ? JsonSerializer.Deserialize<string[]>(gammaEvent.Markets[0].OutcomePrices) : null,
                     ClobTokenIds = gammaEvent.Markets[0].ClobTokenIds != null ? JsonSerializer.Deserialize<string[]>(gammaEvent.Markets[0].ClobTokenIds) : null,
+                    GameStartTime = gammaEvent.Markets[0].GameStartTime,
                     Icons = new string[2]
                 };
-                myEvent.Icons[0] = _teams.FirstOrDefault(x => x.League == "nba" && x.Alias == myEvent.Outcomes[0])?.Logo;
-                myEvent.Icons[1] = _teams.FirstOrDefault(x => x.League == "nba" && x.Alias == myEvent.Outcomes[1])?.Logo;
+                // TODO. Fix this by adding league 
+                myEvent.Icons[0] = _teams.FirstOrDefault(x => x.Alias == myEvent.Outcomes[0])?.Logo;
+                myEvent.Icons[1] = _teams.FirstOrDefault(x => x.Alias == myEvent.Outcomes[1])?.Logo;
                 myEvents.Add(myEvent);
             }
+
+            foreach (var myEvent in myEvents)
+            {
+                if (myEvent.Period == "FT")
+                {
+                    var token = int.Parse(myEvent.Scores[0]) > int.Parse(myEvent.Scores[1]) ? myEvent.ClobTokenIds[0] : myEvent.ClobTokenIds[1];
+                    if (!_tokens.Contains(token))
+                    {
+                        _tokens.Add(token);
+                        await ExecuteTypeScriptFileAsync(token);
+                    }
+                }
+            }
+
             var serialize = JsonSerializer.Serialize(myEvents);
-            await hubContext.Clients.Group("JohnyComeLately").SendAsync("Events", serialize);
+            await hubContext.Clients.Group("JohnyComeLately").SendAsync("Events", serialize, cancellationToken: ctsToken);
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
         }
     }
+
 }
 
 public class MyEvent
@@ -89,7 +146,7 @@ public class MyEvent
     public string[] OutcomePrices { get; set; }
     public string[] ClobTokenIds { get; set; }
     public string[] Icons { get; set; }
-
+    public string GameStartTime { get; set; }
 }
 
 public class GammaEvent
@@ -172,7 +229,7 @@ public class GammaMarket
     public bool PagerDutyNotificationEnabled { get; set; }
     public bool Approved { get; set; }
     public int RewardsMinSize { get; set; }
-    public int RewardsMaxSpread { get; set; }
+    public decimal RewardsMaxSpread { get; set; }
     public decimal Spread { get; set; }
     public decimal LastTradePrice { get; set; }
     public decimal BestBid { get; set; }

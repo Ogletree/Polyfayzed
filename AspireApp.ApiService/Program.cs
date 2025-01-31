@@ -45,7 +45,8 @@ builder.Services.AddScoped<MarketUpdateService>();
 builder.Services.AddScoped<TeamUpdateService>();
 builder.Services.AddScoped<MarketService>();
 builder.Services.AddScoped<JohnyComeLately>();
-
+builder.Services.AddScoped<PositionUpdateService>();
+builder.Services.AddSingleton<LockManager>();
 var app = builder.Build();
 app.UseCors();
 using (var scope = app.Services.CreateScope())
@@ -68,19 +69,28 @@ app.MapHub<WebSocketHub>("/websockethub");
 app.MapEndpoints();
 app.MapDefaultEndpoints();
 
+var cts = new CancellationTokenSource();
+app.Lifetime.ApplicationStopping.Register(() =>
+{
+    cts.Cancel();
+});
+
 using (var scope = app.Services.CreateScope())
 {
     //var webSocketService = scope.ServiceProvider.GetRequiredService<WebSocketService>();
     //BackgroundJob.Enqueue(() => webSocketService.StartListening(CancellationToken.None));
 
     var johnyComeLately = scope.ServiceProvider.GetRequiredService<JohnyComeLately>();
-    RecurringJob.AddOrUpdate("JohnyComeLately", () => johnyComeLately.IntegrateAsync(), Cron.Weekly, new RecurringJobOptions());
+    RecurringJob.AddOrUpdate("JohnyComeLately", () => johnyComeLately.ExecuteAsync(cts.Token), Cron.Weekly, new RecurringJobOptions());
 
-    var teamUpdateService = scope.ServiceProvider.GetRequiredService<TeamUpdateService>();
-    //RecurringJob.AddOrUpdate("TeamUpdate", () => teamUpdateService.IntegrateAsync(), Cron.Weekly, new RecurringJobOptions());
+    var positionUpdateService = scope.ServiceProvider.GetRequiredService<PositionUpdateService>();
+    RecurringJob.AddOrUpdate("PositionUpdateService", () => positionUpdateService.IntegrateAsync(cts.Token), Cron.Weekly, new RecurringJobOptions());
+
+    //var teamUpdateService = scope.ServiceProvider.GetRequiredService<TeamUpdateService>();
+    //RecurringJob.AddOrUpdate("TeamUpdate", () => teamUpdateService.ExecuteAsync(), Cron.Weekly, new RecurringJobOptions());
 
     var marketUpdateService = scope.ServiceProvider.GetRequiredService<MarketUpdateService>();
-    RecurringJob.AddOrUpdate("MarketUpdate", () => marketUpdateService.IntegrateAsync(), Cron.Weekly, new RecurringJobOptions());
+    RecurringJob.AddOrUpdate("MarketUpdate", () => marketUpdateService.IntegrateAsync(cts.Token), Cron.Weekly, new RecurringJobOptions());
 }
 
 app.Run();

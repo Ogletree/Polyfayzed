@@ -11,9 +11,9 @@ public class MarketUpdateService(PolyfayzedContext context, HttpClient httpClien
     private const int BatchSize = 100; // Adjust batch size as needed
 
     [AutomaticRetry(Attempts = 0, OnAttemptsExceeded = AttemptsExceededAction.Fail)]
-    public async Task IntegrateAsync()
+    public async Task IntegrateAsync(CancellationToken ctsToken)
     {
-        var cursorState = await context.CursorStates.FirstOrDefaultAsync(x => x.Id == 1) ?? new CursorState { NextCursor = string.Empty };
+        var cursorState = await context.CursorStates.FirstOrDefaultAsync(x => x.Id == 1, cancellationToken: ctsToken) ?? new CursorState { NextCursor = string.Empty };
 
         ApiResponse response;
         do
@@ -27,7 +27,7 @@ public class MarketUpdateService(PolyfayzedContext context, HttpClient httpClien
                 var batch = markets.Skip(i).Take(BatchSize).Select(m => m.ConditionId).ToList();
                 var batchExistingMarkets = await context.Markets
                     .Where(market => batch.Contains(market.ConditionId))
-                    .ToListAsync();
+                    .ToListAsync(cancellationToken: ctsToken);
                 existingMarkets.AddRange(batchExistingMarkets);
             }
 
@@ -77,7 +77,7 @@ public class MarketUpdateService(PolyfayzedContext context, HttpClient httpClien
                 context.CursorStates.Update(cursorState);
                 Console.WriteLine($"NextCursor: {response.next_cursor}");
             }
-            await context.SaveChangesAsync();
+            await context.SaveChangesAsync(ctsToken);
         } while (!string.IsNullOrEmpty(cursorState.NextCursor) && response.next_cursor != "LTE=");
     }
 
